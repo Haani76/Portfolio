@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Haani Shafiq Siddiqui · Portfolio
 
-## Getting Started
+Two ways to read my CV:
 
-First, run the development server:
+- **`/`**: an editorial, scroll-driven page.
+- **`/drive`**: a 3D world where you drive a car along a winding road and stop at checkpoints to open each section, with an Express or a Scenic route.
+
+Built with Next.js 16, React 19, TypeScript, Motion and React Three Fiber.
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+With Docker:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker build -t portfolio .
+docker run -p 3000:3000 portfolio
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+On Kubernetes (uses the image published by CI):
 
-## Learn More
+```bash
+kubectl apply -f k8s/
+kubectl port-forward service/portfolio 8080:80   # http://localhost:8080
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Project layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | What it is |
+|---|---|
+| `src/data/portfolio.ts` | All CV content. Both pages read from here. |
+| `src/app/` | The two routes (`/` and `/drive`). |
+| `src/components/editorial/` | Scroll animations for the standard page. |
+| `src/components/drive/` | The driving game: track, physics, 3D world, avatar, HUD. |
+| `Dockerfile` | Two-stage build into a small Node image. |
+| `k8s/` | Kubernetes Deployment and Service. |
+| `.github/workflows/ci.yml` | CI/CD pipeline. |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How changes get to `main`
 
-## Deploy on Vercel
+`main` always holds working code. Every change goes through a branch and a pull request:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+git switch main && git pull                 # start from the latest main
+git switch -c feat/short-description        # one branch per change
+# ...edit, then:
+git add -A && git commit -m "Describe the change"
+git push -u origin feat/short-description   # GitHub prints a link to open a PR
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+On the pull request, CI lints, type-checks, builds the site and builds the Docker image. Merge when it's green. The merge to `main` runs CI again and publishes the image to `ghcr.io/haani76/portfolio`.

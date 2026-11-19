@@ -1,0 +1,50 @@
+name: CI/CD
+
+on:
+  pull_request:          # every PR: check it before it can be merged
+  push:
+    branches: [main]     # every merge to main: check, then publish the Docker image
+
+jobs:
+  check:
+    name: Lint, type-check, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  docker:
+    name: Build and publish image
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # On PRs the image is only built (proves the Dockerfile works); on main it is also pushed.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ghcr.io/haani76/portfolio:latest
+            ghcr.io/haani76/portfolio:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
